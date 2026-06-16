@@ -1,36 +1,29 @@
-import { createAgent, tool } from "langchain";
-import * as z from "zod";
-import fs from "fs"
+import { createAgent } from "langchain";
+import { readTextFile, readFileTool } from "./tools.js";
 
-const SYS_PRMPT = `You are a data assistant
-
+const SYS_PRMPT = `You are a coding agent
 ## Capabilities
-
-- \'read_file\': read file content on a local path
+- \'read_text_file\': read text-based file content on a local path.
 `;
-
-const readFile = tool(
-    async ({ path }) => fs.readFile(path, 'utf8', (err, data) => {
-        if (err) {
-            return `Failed to read ${path}`
-        } else {
-            return data
-        }
-    }),
-    {
-        name: "read_file",
-        description: "read file content on a local path.",
-        schema: z.object({ path: z.string() })
-    }
-)
 
 const agent = createAgent({
   model: "gpt-5.4-mini",
-  tools: [readFile],
+  tools: [readFileTool],
+  systemPrompt: SYS_PRMPT
 });
 
 console.log(
+    await readTextFile({ path: "./test.txt" })
+);
+
+console.log(
   await agent.invoke({
-    messages: [{ role: "user", content: "Whats in ./package.json" }],
+    messages: [{ role: "user", content: "Use read_text_file to read test.txt and report its content" }],
+  })
+);
+
+console.log(
+  await agent.invoke({
+    messages: [{ role: "user", content: "Use read_text_file to read test_test.txt and report its content" }],
   })
 );
