@@ -1,7 +1,7 @@
 {
-  "name": "langchain-learning",
+  "name": "research-agent",
   "version": "1.0.0",
-  "description": "A small learning project on the langchain ecosystem",
+  "description": "A small research focused agent",
   "license": "MIT",
   "author": "Stan",
   "type": "module",
@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@langchain/openai": "^1.4.7",
+    "firebase": "^12.15.0",
     "langchain": "^1.4.5",
     "zod": "^4.4.3"
   },
