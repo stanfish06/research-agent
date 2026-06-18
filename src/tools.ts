@@ -2,7 +2,7 @@ import { tool } from "langchain";
 import * as z from "zod";
 import { readFile } from "node:fs/promises"
 import { isNodeError } from "./utils.js"
-import { listHN } from "./firebase.js"
+import { listHN, itemHN } from "./firebase.js"
 
 const InputSchema = z.object({
     // local related input
@@ -60,10 +60,26 @@ type FetchUrlResult = {
     Fetch HackerNews 
    ================== */
 
-const fetchListsHN = toolFunc.implementAsync(
+// HN specific input schema and toolFunc
+const InputSchemaHN = InputSchema.extend({
+    storyId: z.number()
+})
+const toolFuncHN = z.function({
+    input: z.tuple([InputSchemaHN], z.unknown()),
+    output: z.unknown()
+});
+
+const fetchListsHN = toolFuncHN.implementAsync(
     async ({ fetchTimeoutMillisecond }, ..._extraArgs): Promise<FetchUrlResult> => {
         const HackerNewsLists = await listHN(fetchTimeoutMillisecond);
         return { url: "https://news.ycombinator.com/", content: HackerNewsLists, error: "" };
+    }
+)
+
+const fetchItemHN = toolFuncHN.implementAsync(
+    async ({ storyId, fetchTimeoutMillisecond }, ..._extraArgs): Promise<FetchUrlResult> => {
+        const HackerNewsStory = await itemHN(storyId, fetchTimeoutMillisecond);
+        return { url: "https://news.ycombinator.com/", content: HackerNewsStory, error: "" };
     }
 )
 
@@ -72,6 +88,33 @@ export const fetchListsHNTool = tool(
     {
         name: "fetch_hackernews_lists",
         description: "fetch lists of story ids from the Hacker News site (e.g. top, new, best, and show stories)",
-        schema: InputSchema
+        schema: InputSchemaHN
+    }
+)
+
+export const fetchItemHNTool = tool(
+    fetchItemHN,
+    {
+        name: "fetch_hackernews_story",
+        description: `fetch one story item from the Hacker News site (need to provide the storyId)
+ All items have some of the following properties:
+ Field | Description
+ ------|------------
+ id | The item's unique id.
+ deleted | true if the item is deleted.
+ type | The type of item. One of "job", "story", "comment", "poll", or "pollopt".
+ by | The username of the item's author.
+ time | Creation date of the item, in [Unix Time](http://en.wikipedia.org/wiki/Unix_time).
+ text | The comment, story or poll text. HTML.
+ dead | true if the item is dead.
+ parent | The comment's parent: either another comment or the relevant story.
+ poll | The pollopt's associated poll.
+ kids | The ids of the item's comments, in ranked display order.
+ url | The URL of the story.
+ score | The story's score, or the votes for a pollopt.
+ title | The title of the story, poll or job. HTML.
+ parts | A list of related pollopts, in display order.
+ descendants | In the case of stories or polls, the total comment count.`,
+        schema: InputSchemaHN
     }
 )
