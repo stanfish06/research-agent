@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@langchain/openai": "^1.4.7",
+    "fast-xml-parser": "^5.9.2",
     "firebase": "^12.15.0",
     "langchain": "^1.4.5",
     "zod": "^4.4.3"
