@@ -1,4 +1,4 @@
-import { fetchWithTimeout, DEFAULT_TIMEOUT } from "./utils.js"
+import { fetchWithTimeout, asArray, DEFAULT_TIMEOUT } from "./utils.js"
 import { XMLParser } from "fast-xml-parser";
 
 const ARXIV_API = "https://export.arxiv.org/api/"
@@ -27,7 +27,17 @@ export const searchQuery = async (query: string, maxItems = 5, timeoutMS = DEFAU
         sortOrder: "descending"
     });
     const searchUrl = ARXIV_API + "query?" + params.toString();
-    const response = await fetchWithTimeout(searchUrl, timeoutMS);
-    // todo: xml parsing
+    const response = await fetchWithTimeout(searchUrl, timeoutMS).then(
+        (response) => {
+            if (!response.ok) {
+                throw new Error(`${response.status}`);
+            }
+            return response.text();
+        }
+    );
+    const parser = new XMLParser();
+    const feed = parser.parse(response).feed;
+    const entries = asArray(feed?.entry);
+
     return { query: "", papers: "" };
 }
