@@ -1,10 +1,10 @@
 import { initializeApp } from "firebase/app";
+import { DEFAULT_TIMEOUT } from "./utils.js"
 import { getDatabase, ref, get } from 'firebase/database';
 import type { DataSnapshot, Query } from 'firebase/database';
 
 const appHN = initializeApp({ databaseURL: 'https://hacker-news.firebaseio.com' });
 const dbHN = getDatabase(appHN);
-const DEFAULT_TIMEOUT = 30000;
 const handler = (snap: DataSnapshot) => snap.val();
 const error_handler = () => "fetch timeout (try increase timeout)";
 
