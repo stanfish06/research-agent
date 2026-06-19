@@ -3,6 +3,7 @@ import * as z from "zod";
 import { readFile } from "node:fs/promises"
 import { isNodeError } from "./utils.js"
 import { listHN, itemHN } from "./firebase.js"
+import { searchQuery } from "./arxiv_client.js"
 
 const InputSchema = z.object({
     // local related input
@@ -118,3 +119,31 @@ export const fetchItemHNTool = tool(
         schema: InputSchemaHN
     }
 )
+
+/* =============
+    Fetch Arxiv
+   ============= */
+const InputSchemaArxiv = InputSchema.extend({
+    query: z.string(),
+    maxQueryItems: z.number()
+})
+const toolFuncArxiv = z.function({
+    input: z.tuple([InputSchemaArxiv], z.unknown()),
+    output: z.unknown()
+});
+
+const searchQueryArxiv = toolFuncArxiv.implementAsync(
+    async ({ query, maxQueryItems, fetchTimeoutMillisecond }, ..._extraArgs): Promise<FetchUrlResult> => {
+        const result = await searchQuery(query, maxQueryItems, fetchTimeoutMillisecond);
+        return { url: "https://arxiv.org/", content: result, error: "" };
+    }
+)
+export const searchQueryArxivTool = tool(
+    searchQueryArxiv,
+    {
+        name: "search_query_arxiv",
+        description: "search papers on Arxiv (need to provide query term)",
+        schema: InputSchemaArxiv
+    }
+)
+

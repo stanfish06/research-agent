@@ -12,7 +12,6 @@ type ArxivPaper = {
     updated: string;
     pdfUrl?: string;
 }
-
 type SearchQueryResult = {
     query: string,
     papers: ArxivPaper[] | string
@@ -35,9 +34,23 @@ export const searchQuery = async (query: string, maxItems = 5, timeoutMS = DEFAU
             return response.text();
         }
     );
-    const parser = new XMLParser();
+    const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@_" });
     const feed = parser.parse(response).feed;
-    const entries = asArray(feed?.entry);
-
-    return { query: "", papers: "" };
+    const papers = asArray(feed?.entry).map((entry: any): ArxivPaper => {
+        const pdfLink = asArray(entry.link).find(
+            (link: any) => link?.["@_title"] === "pdf"
+        );
+        return {
+            id: entry.id,
+            title: entry.title,
+            abstract: entry.summary,
+            authors: asArray(entry.author).map(
+                (author: any) => author.name
+            ),
+            published: entry.published,
+            updated: entry.updated,
+            pdfUrl: pdfLink?.["@_href"]
+        }
+    })
+    return { query: query, papers: papers };
 }
