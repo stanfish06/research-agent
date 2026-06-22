@@ -13,21 +13,32 @@ const SYS_PRMPT = `You are a research focused agent dedicated to find useful inf
 
 const model = await initChatModel("gpt-5.4-mini", {})
 
-function printMsg(msg: string, commandInterface: readline.Interface, output: readline.Readline) {
-    output.cursorTo(0);
-    output.clearLine(0);
-    console.log(msg);
-    commandInterface.prompt();
-}
-
-function launch(agent: any) {
+async function launch(agent: any) {
     const cli = readline.createInterface({
         input: stdin,
         output: stdout,
         prompt: "> "
     });
-    const rl = new readline.Readline(stdout);
-    printMsg("Hello! (exit with <C-c>)", cli, rl);
+    console.log("Hello! (exit with <C-c>)\n");
+    cli.prompt();
+
+    cli.on("line", async (line: string) => {
+        const input = line.trim();
+        if (!input) {
+            cli.prompt();
+            return;
+        }
+        try {
+            const result = await agent.invoke({
+                messages: [{ role: "user", content: input }],
+            });
+            const content = result?.messages?.at(-1)?.content ?? result;
+            console.log(`\n${typeof content === "string" ? content : JSON.stringify(content)}\n`);
+        } catch (err) {
+            console.error(`\nError: ${(err as Error).message}\n`);
+        }
+        cli.prompt();
+    });
 }
 
 async function main() {
@@ -37,30 +48,6 @@ async function main() {
         systemPrompt: SYS_PRMPT
     });
     launch(agent);
-
-    // console.log(
-    //     await agent.invoke({
-    //         messages: [{ role: "user", content: "Use read_text_file to read test.txt and report its content" }],
-    //     })
-    // );
-    //
-    // console.log(
-    //     await agent.invoke({
-    //         messages: [{ role: "user", content: "Use fetch_hackernews_lists to get lists of store ids, pick and report some story ids from each list." }],
-    //     })
-    // );
-    //
-    // console.log(
-    //     await agent.invoke({
-    //         messages: [{ role: "user", content: "fetch the content of a random top story on the Hacker News site" }],
-    //     })
-    // );
-    //
-    // console.log(
-    //     await agent.invoke({
-    //         messages: [{ role: "user", content: "fetch 3 papers on the Arxiv site related to limit cycle" }],
-    //     })
-    // );
 }
 
 main().catch((err) => {
