@@ -1,11 +1,12 @@
 import { createAgent, initChatModel } from "langchain";
-import { readFileTool, fetchListsHNTool, fetchItemHNTool, searchQueryArxivTool } from "./tools.js";
+import { readFileTool, fetchPDFTool, fetchListsHNTool, fetchItemHNTool, searchQueryArxivTool } from "./tools.js";
 import { promises as readline } from "node:readline";
 import { stdin, stdout } from "node:process";
 
 const SYS_PRMPT = `You are a research focused agent dedicated to find useful information from academic papers, news, blogs, and forums.
 ## Capabilities
 - \'read_text_file\': read text-based file content on a local path.
+- \'fetch_pdf\': download the pdf from the url and save it at the local path (need to provide the pdf url and the local path where the pdf will be stored).
 - \'fetch_hackernews_lists\': fetch lists of story ids from the Hacker News site (e.g. top, new, best, and show stories).
 - \`fetch_hackernews_story\': fetch one story item from the Hacker News site (need to provide the storyId).
 - \`search_query_arxiv\': search papers on Arxiv (need to provide query term).
@@ -44,7 +45,7 @@ async function launch(agent: any) {
 async function main() {
     const agent = createAgent({
         model: model,
-        tools: [readFileTool, fetchListsHNTool, fetchItemHNTool, searchQueryArxivTool],
+        tools: [readFileTool, fetchPDFTool, fetchListsHNTool, fetchItemHNTool, searchQueryArxivTool],
         systemPrompt: SYS_PRMPT
     });
     launch(agent);

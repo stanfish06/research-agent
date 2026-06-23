@@ -1,7 +1,7 @@
 import { tool } from "langchain";
 import * as z from "zod";
 import { readFile } from "node:fs/promises"
-import { isNodeError } from "./utils.js"
+import { isNodeError, downloadPDF } from "./utils.js"
 import { listHN, itemHN } from "./firebase.js"
 import { searchQuery } from "./arxiv_client.js"
 
@@ -56,6 +56,21 @@ type FetchUrlResult = {
     content: any,
     error: string
 };
+
+const fetchPDF = toolFunc.implementAsync(
+    async ({ path, url, fetchTimeoutMillisecond }, ..._extraArgs): Promise<FetchUrlResult> => {
+        downloadPDF(url, path, fetchTimeoutMillisecond);
+        return { url: url, content: "", error: "" };
+    }
+)
+export const fetchPDFTool = tool(
+    fetchPDF,
+    {
+        name: "fetch_pdf",
+        description: "download the pdf from the url and save it at the local path (need to provide the pdf url and the local path where the pdf will be stored)",
+        schema: InputSchema
+    }
+)
 
 /* ==================
     Fetch HackerNews 
