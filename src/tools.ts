@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises"
 import { isNodeError, downloadPDF } from "./utils.js"
 import { listHN, itemHN } from "./firebase.js"
 import { searchQuery } from "./arxiv_client.js"
+import { parsePDF } from "./pdf.js"
 
 const InputSchema = z.object({
     // local related input
@@ -44,6 +45,21 @@ export const readFileTool = tool(
     {
         name: "read_text_file",
         description: "read text-based file content on a local path.",
+        schema: InputSchema
+    }
+)
+
+const readPDFFile = toolFunc.implementAsync(
+    async ({ path }, ..._extraArgs): Promise<ReadFileResult> => {
+        const data = await parsePDF(path);
+        return { path: path, content: data.text ?? "", error: data.error ?? "" };
+    }
+)
+export const readPDFTool = tool(
+    readPDFFile,
+    {
+        name: "read_pdf",
+        description: "parse a local PDF file and return its text as HTML (need to provide the local path to the PDF)",
         schema: InputSchema
     }
 )
