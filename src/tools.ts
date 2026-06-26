@@ -52,13 +52,18 @@ export const readFileTool = tool(
 const readPDFFile = toolFunc.implementAsync(
     async ({ path }, ..._extraArgs): Promise<ReadFileResult> => {
         const data = await parsePDF(path);
-        return { path: path, content: data.text ?? "", error: data.error ?? "" };
+        if (data.error) return { path, content: "", error: data.error };
+        const images = (data.images ?? []).map((buf: Uint8Array) =>
+            `data:image/png;base64,${Buffer.from(buf).toString("base64")}`
+        );
+        const content = JSON.stringify({ html: data.text ?? "", images });
+        return { path, content, error: "" };
     }
 )
 export const readPDFTool = tool(
     readPDFFile,
     {
-        name: "read_pdf",
+        name: "read_pdf_file",
         description: "parse a local PDF file and return its text as HTML (need to provide the local path to the PDF)",
         schema: InputSchema
     }

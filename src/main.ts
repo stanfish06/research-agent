@@ -7,7 +7,7 @@ const SYS_PRMPT = `You are a research focused agent dedicated to find useful inf
 ## Capabilities
 - 'read_text_file': read text-based file content on a local path.
 - 'read_pdf': parse a local PDF file and return its text as HTML (need to provide the local path to the PDF).
-- \'fetch_pdf\': download the pdf from the url and save it at the local path (need to provide the pdf url and the local path where the pdf will be stored).
+- \'fetch_pdf_file\': download the pdf from the url and save it at the local path (need to provide the pdf url and the local path where the pdf will be stored).
 - \'fetch_hackernews_lists\': fetch lists of story ids from the Hacker News site (e.g. top, new, best, and show stories).
 - \`fetch_hackernews_story\': fetch one story item from the Hacker News site (need to provide the storyId).
 - \`search_query_arxiv\': search papers on Arxiv (need to provide query term).

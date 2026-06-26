@@ -12,14 +12,22 @@ parentPort!.on("message", (pathPDF: string) => {
     try {
         const doc = mupdf.Document.openDocument(pathPDF);
         let html = "";
+        let images: Uint8Array[] = [];
         for (let i = 0; i < doc.countPages(); i++) {
             const page = doc.loadPage(i);
             const stext = page.toStructuredText("preserve-whitespace");
             html += stext.asHTML(i);
+            stext.walk({
+                onImageBlock(_b, _t, image) {
+                    const pixelMap = image.toPixmap();
+                    images.push(pixelMap.asPNG());
+                    pixelMap.destroy();
+                }
+            });
             page.destroy();
         }
         doc.destroy();
-        msg = { text: html };
+        msg = { text: html, images };
     } catch (err) {
         msg = { error: String(err) };
     }
