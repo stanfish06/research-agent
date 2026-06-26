@@ -1,7 +1,7 @@
 import { Worker } from "node:worker_threads";
-import type { PDFData } from "./pdf_parser.js";
+import type { PDFData, PDFRequest } from "./pdf_parser.js";
 
-export const parsePDF = async (path: string): Promise<PDFData> => {
+export const parsePDF = async (path: string, renderPages?: number[]): Promise<PDFData> => {
     return new Promise((resolve) => {
         const worker = new Worker(new URL("./pdf_parser.ts", import.meta.url));
         worker.once("message", (data: PDFData) => {
@@ -12,6 +12,7 @@ export const parsePDF = async (path: string): Promise<PDFData> => {
             worker.terminate();
             resolve({ error: String(err) });
         });
-        worker.postMessage(path);
+        const req: PDFRequest = renderPages ? { path, renderPages } : { path };
+        worker.postMessage(req);
     });
 }

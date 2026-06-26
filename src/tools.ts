@@ -6,21 +6,8 @@ import { listHN, itemHN } from "./firebase.js"
 import { searchQuery } from "./arxiv_client.js"
 import { parsePDF } from "./pdf.js"
 
-const InputSchema = z.object({
-    // local related input
-    path: z.string(),
-    // web related inputs
-    url: z.url(),
-    fetchTimeoutMillisecond: z.number()
-});
-
-const toolFunc = z.function({
-    input: z.tuple([InputSchema], z.unknown()),
-    output: z.unknown()
-});
-
 /* ===========
-    Read file 
+    Read file
    =========== */
 type ReadFileResult = {
     path: string,
@@ -28,7 +15,15 @@ type ReadFileResult = {
     error: string
 }
 
-const readTextFile = toolFunc.implementAsync(
+const InputSchemaPath = z.object({
+    path: z.string()
+});
+const toolFuncPath = z.function({
+    input: z.tuple([InputSchemaPath], z.unknown()),
+    output: z.unknown()
+});
+
+const readTextFile = toolFuncPath.implementAsync(
     async ({ path }, ..._extraArgs): Promise<ReadFileResult> => {
         try {
             const content = await readFile(path, 'utf8');
@@ -45,18 +40,22 @@ export const readFileTool = tool(
     {
         name: "read_text_file",
         description: "read text-based file content on a local path.",
-        schema: InputSchema
+        schema: InputSchemaPath
     }
 )
 
-const readPDFFile = toolFunc.implementAsync(
+const readPDFFile = toolFuncPath.implementAsync(
     async ({ path }, ..._extraArgs): Promise<ReadFileResult> => {
         const data = await parsePDF(path);
         if (data.error) return { path, content: "", error: data.error };
         const images = (data.images ?? []).map((buf: Uint8Array) =>
             `data:image/png;base64,${Buffer.from(buf).toString("base64")}`
         );
-        const content = JSON.stringify({ html: data.text ?? "", images });
+        const content = JSON.stringify({
+            html: data.text ?? "",
+            images,
+            pageCount: data.pageCount ?? 0,
+        });
         return { path, content, error: "" };
     }
 )
@@ -64,8 +63,46 @@ export const readPDFTool = tool(
     readPDFFile,
     {
         name: "read_pdf_file",
-        description: "parse a local PDF file and return its text as HTML (need to provide the local path to the PDF)",
-        schema: InputSchema
+        description: "Parse a local PDF and return its text as HTML plus the total page count (`pageCount`). Vector figures/tables/equations are often NOT captured in the text — to actually see them, follow up with `render_pdf_pages` for the relevant page numbers. Provide the local path to the PDF.",
+        schema: InputSchemaPath
+    }
+)
+
+const InputSchemaRenderPDF = z.object({
+    path: z.string(),
+    pages: z.array(z.number())
+})
+const toolFuncRenderPDF = z.function({
+    input: z.tuple([InputSchemaRenderPDF], z.unknown()),
+    output: z.unknown()
+});
+
+const renderPDFPages = toolFuncRenderPDF.implementAsync(
+    async ({ path, pages }, ..._extraArgs): Promise<ReadFileResult> => {
+        const data = await parsePDF(path, pages);
+        if (data.error) return { path, content: "", error: data.error };
+        const rendered = (data.pages ?? []).map((p) => ({
+            index: p.index,
+            url: `data:image/png;base64,${Buffer.from(p.png).toString("base64")}`,
+        }));
+        if (rendered.length === 0) {
+            const count = data.pageCount ?? 0;
+            return {
+                path,
+                content: "",
+                error: `No pages rendered. Document has ${count} page(s); valid 0-based page numbers are 0..${Math.max(count - 1, 0)}.`,
+            };
+        }
+        const content = JSON.stringify({ pages: rendered, pageCount: data.pageCount ?? 0 });
+        return { path, content, error: "" };
+    }
+)
+export const renderPDFPagesTool = tool(
+    renderPDFPages,
+    {
+        name: "render_pdf_pages",
+        description: "Render specific pages of a local PDF to full-page screenshots so you can SEE figures, tables, equations, or vector graphics that text extraction misses. Provide the local `path` and `pages`: a list of 0-based page numbers (0 to pageCount-1, where pageCount comes from read_pdf_file). Request only the pages you actually need.",
+        schema: InputSchemaRenderPDF
     }
 )
 
@@ -78,10 +115,24 @@ type FetchUrlResult = {
     error: string
 };
 
-const fetchPDF = toolFunc.implementAsync(
+const InputSchemaFetchPDF = z.object({
+    url: z.url(),
+    path: z.string(),
+    fetchTimeoutMillisecond: z.number()
+});
+const toolFuncFetchPDF = z.function({
+    input: z.tuple([InputSchemaFetchPDF], z.unknown()),
+    output: z.unknown()
+});
+
+const fetchPDF = toolFuncFetchPDF.implementAsync(
     async ({ path, url, fetchTimeoutMillisecond }, ..._extraArgs): Promise<FetchUrlResult> => {
-        downloadPDF(url, path, fetchTimeoutMillisecond);
-        return { url: url, content: "", error: "" };
+        try {
+            await downloadPDF(url, path, fetchTimeoutMillisecond);
+            return { url, content: `Saved PDF to ${path}`, error: "" };
+        } catch (err) {
+            return { url, content: "", error: String(err) };
+        }
     }
 )
 export const fetchPDFTool = tool(
@@ -89,31 +140,39 @@ export const fetchPDFTool = tool(
     {
         name: "fetch_pdf",
         description: "download the pdf from the url and save it at the local path (need to provide the pdf url and the local path where the pdf will be stored)",
-        schema: InputSchema
+        schema: InputSchemaFetchPDF
     }
 )
 
 /* ==================
-    Fetch HackerNews 
+    Fetch HackerNews
    ================== */
 
-// HN specific input schema and toolFunc
-const InputSchemaHN = InputSchema.extend({
-    storyId: z.number()
+const InputSchemaHNList = z.object({
+    fetchTimeoutMillisecond: z.number()
 })
-const toolFuncHN = z.function({
-    input: z.tuple([InputSchemaHN], z.unknown()),
+const toolFuncHNList = z.function({
+    input: z.tuple([InputSchemaHNList], z.unknown()),
     output: z.unknown()
 });
 
-const fetchListsHN = toolFuncHN.implementAsync(
+const InputSchemaHNStory = z.object({
+    storyId: z.number(),
+    fetchTimeoutMillisecond: z.number()
+})
+const toolFuncHNStory = z.function({
+    input: z.tuple([InputSchemaHNStory], z.unknown()),
+    output: z.unknown()
+});
+
+const fetchListsHN = toolFuncHNList.implementAsync(
     async ({ fetchTimeoutMillisecond }, ..._extraArgs): Promise<FetchUrlResult> => {
         const HackerNewsLists = await listHN(fetchTimeoutMillisecond);
         return { url: "https://news.ycombinator.com/", content: HackerNewsLists, error: "" };
     }
 )
 
-const fetchItemHN = toolFuncHN.implementAsync(
+const fetchItemHN = toolFuncHNStory.implementAsync(
     async ({ storyId, fetchTimeoutMillisecond }, ..._extraArgs): Promise<FetchUrlResult> => {
         const HackerNewsStory = await itemHN(storyId, fetchTimeoutMillisecond);
         return { url: "https://news.ycombinator.com/", content: HackerNewsStory, error: "" };
@@ -125,7 +184,7 @@ export const fetchListsHNTool = tool(
     {
         name: "fetch_hackernews_lists",
         description: "fetch lists of story ids from the Hacker News site (e.g. top, new, best, and show stories)",
-        schema: InputSchemaHN
+        schema: InputSchemaHNList
     }
 )
 
@@ -152,16 +211,17 @@ export const fetchItemHNTool = tool(
  title | The title of the story, poll or job. HTML.
  parts | A list of related pollopts, in display order.
  descendants | In the case of stories or polls, the total comment count.`,
-        schema: InputSchemaHN
+        schema: InputSchemaHNStory
     }
 )
 
 /* =============
     Fetch Arxiv
    ============= */
-const InputSchemaArxiv = InputSchema.extend({
+const InputSchemaArxiv = z.object({
     query: z.string(),
-    maxQueryItems: z.number()
+    maxQueryItems: z.number(),
+    fetchTimeoutMillisecond: z.number()
 })
 const toolFuncArxiv = z.function({
     input: z.tuple([InputSchemaArxiv], z.unknown()),
@@ -182,4 +242,3 @@ export const searchQueryArxivTool = tool(
         schema: InputSchemaArxiv
     }
 )
-
