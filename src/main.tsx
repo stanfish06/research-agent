@@ -3,6 +3,7 @@ import { pdfImageMiddleware } from "./pdf_middleware.js";
 import { readFileTool, readPDFTool, renderPDFPagesTool, fetchPDFTool, fetchListsHNTool, fetchItemHNTool, searchQueryArxivTool } from "./tools.js";
 import { promises as readline } from "node:readline";
 import { stdin, stdout } from "node:process";
+import './ui/App.js'
 
 const SYS_PRMPT = `You are a research focused agent dedicated to find useful information from academic papers, news, blogs, and forums.
 ## Capabilities
