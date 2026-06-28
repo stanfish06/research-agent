@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { Box, render, Text, Static, useInput, useStdout } from "ink";
+import { Box, Text, Static, useInput, useStdout } from "ink";
 
 let messageId = 0;
 
-function App() {
+export function App(mainAgent: any) {
     const [input, setInput] = useState("");
     const [messages, setMessages] = useState<
         Array<{
@@ -53,6 +53,3 @@ function App() {
         </>
     )
 }
-
-// render(<App />, { exitOnCtrlC: false });
-render(<App />);
