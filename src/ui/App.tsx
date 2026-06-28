@@ -1,31 +1,20 @@
-import { useEffect, useState } from "react";
-import { Box, Text, Static, useInput, useStdout } from "ink";
+import { useState } from "react";
+import { Box, Text, useInput, useStdout } from "ink";
+import { useAgent } from "./hooks/useAgent.js"
 
-let messageId = 0;
-
-export function App(mainAgent: any) {
+export function App({ mainAgent }: { mainAgent: any }) {
     const [input, setInput] = useState("");
-    const [messages, setMessages] = useState<
-        Array<{
-            id: number;
-            text: string;
-        }>
-    >([]);
+    const { messages, sendToAgent } = useAgent(mainAgent);
     const { stdout, write } = useStdout();
-    useInput((inputChar, key) => {
+    useInput(async (inputChar, key) => {
         if (key.ctrl && inputChar === "c") {
             write("C-c again to exit");
         }
         if (key.return) {
             if (input) {
-                setMessages(previousMessages => [
-                    ...previousMessages,
-                    {
-                        id: messageId++,
-                        text: `${input}`,
-                    },
-                ]);
+                const currentInput = input;
                 setInput("");
+                await sendToAgent(currentInput);
             }
         } else if (key.backspace || key.delete) {
             setInput(currentInput => currentInput.slice(0, -1));
