@@ -19,7 +19,7 @@ const SYS_PRMPT = `You are a research focused agent dedicated to find useful inf
 First call 'read_pdf_file' to get the text (HTML) and 'pageCount'. Many arXiv papers store figures as vector graphics that do NOT appear in the extracted text. When you need to SEE a figure, table, plot, or equation, call 'render_pdf_pages' with only the specific page numbers you need (0-based, from 0 to pageCount-1) — do not request every page.
 `;
 
-const model = await initChatModel("openai:gpt-5.4", {})
+const model = await initChatModel("openai:gpt-5.4-mini", {})
 
 async function launch(agent: any) {
     const cli = readline.createInterface({
@@ -56,7 +56,7 @@ async function main() {
         middleware: [pdfImageMiddleware],
         systemPrompt: SYS_PRMPT
     });
-    launch(agent);
+    // launch(agent);
 }
 
 main().catch((err) => {
